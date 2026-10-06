@@ -53,10 +53,11 @@ Varsayılan geliştirme değerleri `compose.yaml` içinde güvenli olmayan yerel
 | `POSTGRES_USER` | `enteksis` | Veritabanı kullanıcısı |
 | `POSTGRES_PASSWORD` | `enteksis_dev_password` | Yalnızca yerel geliştirme parolası |
 | `ALLOWED_ORIGINS` | `http://localhost:5173` | Virgülle ayrılmış CORS origin listesi |
-| `ADMIN_USERNAME` | `admin` | Yerel admin kullanıcı adı |
-| `ADMIN_PASSWORD` | `enteksis-local-admin` | Yerel admin şifresi |
 
 `CLIENT_PORT` değiştirildiğinde `ALLOWED_ORIGINS` değerini de yeni origin ile birlikte değiştirin.
+
+Admin girişi challenge gereği statiktir: kullanıcı adı `admin`, şifre `123456admin`. Bu yaklaşım
+üretim ortamı için uygun değildir.
 
 ## Endpoint'ler
 

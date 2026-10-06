@@ -19,9 +19,9 @@
   Windows'ta Git Bash/WSL gereksinimi açıkça belgelendi.
 - Database hatalarının istemciye ayrıntılı dönmesi reddedildi; ayrıntı yalnızca server log'unda,
   istemciye genel hata mesajı gider.
-- Admin API için kullanıcı adı/şifre ve sabit süreli credential karşılaştırması kullanıldı. İlk
-  SMTP/Mailpit yaklaşımı kullanıcı yönlendirmesiyle kaldırıldı; yanıt akışı istemcide `mailto:`
-  olarak sınırlandı.
+- Admin API için kullanıcı yönlendirmesiyle `admin` / `123456admin` bilgileri statik tutuldu ve
+  sabit süreli credential karşılaştırması kullanıldı. İlk SMTP/Mailpit yaklaşımı kaldırıldı;
+  yanıt akışı istemcide `mailto:` olarak sınırlandı.
 
 ## Doğrulama kaydı
 

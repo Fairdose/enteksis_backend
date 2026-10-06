@@ -15,7 +15,11 @@ import (
 	"github.com/Fairdose/enteksis_backend/internal/service"
 )
 
-const maxRequestBodySize = 16 << 10
+const (
+	maxRequestBodySize = 16 << 10
+	adminUsername     = "admin"
+	adminPassword     = "123456admin"
+)
 
 var validServices = map[string]struct{}{
 	"web-design":           {},
@@ -29,8 +33,6 @@ type Dependencies struct {
 	RequestStore   service.RequestStore
 	AdminStore     service.AdminRequestStore
 	AllowedOrigins []string
-	AdminUsername  string
-	AdminPassword  string
 }
 
 type handler struct {
@@ -64,7 +66,7 @@ func NewRouter(dependencies Dependencies) http.Handler {
 		requestStore:   dependencies.RequestStore,
 		adminStore:     dependencies.AdminStore,
 		allowedOrigins: make(map[string]struct{}, len(dependencies.AllowedOrigins)),
-		adminAuth:      "Basic " + base64.StdEncoding.EncodeToString([]byte(dependencies.AdminUsername+":"+dependencies.AdminPassword)),
+		adminAuth:      "Basic " + base64.StdEncoding.EncodeToString([]byte(adminUsername+":"+adminPassword)),
 	}
 	for _, origin := range dependencies.AllowedOrigins {
 		h.allowedOrigins[origin] = struct{}{}

@@ -54,8 +54,6 @@ func main() {
 			RequestStore:   requestStore,
 			AdminStore:     requestStore,
 			AllowedOrigins: cfg.AllowedOrigins,
-			AdminUsername:  cfg.AdminUsername,
-			AdminPassword:  cfg.AdminPassword,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,

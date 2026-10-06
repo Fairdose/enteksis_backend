@@ -137,7 +137,7 @@ func TestAdminRequestsRequireCredentials(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/admin/requests", nil)
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{AdminUsername: "admin", AdminPassword: "secret"}).ServeHTTP(recorder, request)
+	NewRouter(Dependencies{}).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, recorder.Code)
@@ -147,10 +147,10 @@ func TestAdminRequestsRequireCredentials(t *testing.T) {
 func TestAdminListsRequests(t *testing.T) {
 	store := &stubAdminStore{requests: []service.ServiceRequest{{ID: "request-id", Name: "Ada Lovelace"}}}
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/admin/requests", nil)
-	request.Header.Set("Authorization", basicAuthorization("admin", "secret"))
+	request.Header.Set("Authorization", basicAuthorization("admin", "123456admin"))
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{AdminStore: store, AdminUsername: "admin", AdminPassword: "secret"}).ServeHTTP(recorder, request)
+	NewRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, recorder.Code, recorder.Body.String())
@@ -163,14 +163,10 @@ func TestAdminListsRequests(t *testing.T) {
 func TestAdminGetsRequestDetail(t *testing.T) {
 	store := &stubAdminStore{request: service.ServiceRequest{ID: "request-id", Email: "ada@example.com"}}
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/admin/requests/request-id", nil)
-	request.Header.Set("Authorization", basicAuthorization("admin", "secret"))
+	request.Header.Set("Authorization", basicAuthorization("admin", "123456admin"))
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{
-		AdminStore:    store,
-		AdminUsername: "admin",
-		AdminPassword: "secret",
-	}).ServeHTTP(recorder, request)
+	NewRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, recorder.Code, recorder.Body.String())
