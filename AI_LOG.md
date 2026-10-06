@@ -22,6 +22,8 @@
 - Admin API için kullanıcı yönlendirmesiyle `admin` / `123456admin` bilgileri statik tutuldu ve
   sabit süreli credential karşılaştırması kullanıldı. İlk SMTP/Mailpit yaklaşımı kaldırıldı;
   yanıt akışı istemcide `mailto:` olarak sınırlandı.
+- Uygulama ve yerel runtime kimliği kullanıcı yönlendirmesiyle `Ent Challange` olarak değiştirildi;
+  mevcut GitHub repo yolları dış entegrasyonları bozmamak için korundu.
 
 ## Doğrulama kaydı
 

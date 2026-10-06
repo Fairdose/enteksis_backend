@@ -68,7 +68,7 @@ ENGINE="$(select_engine)"
 
 COMPOSE=(
   "$ENGINE" compose
-  --project-name enteksis
+  --project-name ent-challange
   --file "$COMPOSE_FILE"
 )
 
@@ -80,7 +80,7 @@ case "$COMMAND" in
   start|up)
     "${COMPOSE[@]}" up --build --detach --remove-orphans
     "${COMPOSE[@]}" ps
-    printf '\nEnteksis hazır:\n'
+    printf '\nEnt Challange hazır:\n'
     printf '  Client:     http://localhost:%s\n' "${CLIENT_PORT:-5173}"
     printf '  API:        http://localhost:%s\n' "${HTTP_PORT:-8080}"
     printf '  PostgreSQL: localhost:%s\n' "${POSTGRES_PORT:-5432}"

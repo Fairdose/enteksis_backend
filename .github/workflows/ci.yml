@@ -12,13 +12,13 @@ jobs:
       postgres:
         image: postgres:18-alpine
         env:
-          POSTGRES_DB: enteksis
-          POSTGRES_USER: enteksis
-          POSTGRES_PASSWORD: enteksis_test_password
+          POSTGRES_DB: ent_challange
+          POSTGRES_USER: ent_challange
+          POSTGRES_PASSWORD: ent_challange_test_password
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U enteksis -d enteksis"
+          --health-cmd "pg_isready -U ent_challange -d ent_challange"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10

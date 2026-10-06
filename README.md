@@ -1,6 +1,6 @@
-# Enteksis Backend
+# Ent Challange Backend
 
-Enteksis hizmet talep formu için Go HTTP API'si ve PostgreSQL veritabanı.
+Ent Challange hizmet talep formu için Go HTTP API'si ve PostgreSQL veritabanı.
 
 ## Gereksinimler
 
@@ -49,9 +49,9 @@ Varsayılan geliştirme değerleri `compose.yaml` içinde güvenli olmayan yerel
 | `CLIENT_PORT` | `5173` | Host üzerindeki frontend portu |
 | `HTTP_PORT` | `8080` | Host üzerindeki API portu |
 | `POSTGRES_PORT` | `5432` | Host üzerindeki PostgreSQL portu |
-| `POSTGRES_DB` | `enteksis` | Veritabanı adı |
-| `POSTGRES_USER` | `enteksis` | Veritabanı kullanıcısı |
-| `POSTGRES_PASSWORD` | `enteksis_dev_password` | Yalnızca yerel geliştirme parolası |
+| `POSTGRES_DB` | `ent_challange` | Veritabanı adı |
+| `POSTGRES_USER` | `ent_challange` | Veritabanı kullanıcısı |
+| `POSTGRES_PASSWORD` | `ent_challange_dev_password` | Yalnızca yerel geliştirme parolası |
 | `ALLOWED_ORIGINS` | `http://localhost:5173` | Virgülle ayrılmış CORS origin listesi |
 
 `CLIENT_PORT` değiştirildiğinde `ALLOWED_ORIGINS` değerini de yeni origin ile birlikte değiştirin.

@@ -124,7 +124,7 @@ func (h *handler) requireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		provided := request.Header.Get("Authorization")
 		if len(provided) != len(h.adminAuth) || subtle.ConstantTimeCompare([]byte(provided), []byte(h.adminAuth)) != 1 {
-			w.Header().Set("WWW-Authenticate", `Basic realm="Enteksis Admin", charset="UTF-8"`)
+			w.Header().Set("WWW-Authenticate", `Basic realm="Ent Challange Admin", charset="UTF-8"`)
 			writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Yönetici erişimi gerekli."})
 			return
 		}
