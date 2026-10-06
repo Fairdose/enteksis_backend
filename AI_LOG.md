@@ -19,6 +19,9 @@
   Windows'ta Git Bash/WSL gereksinimi açıkça belgelendi.
 - Database hatalarının istemciye ayrıntılı dönmesi reddedildi; ayrıntı yalnızca server log'unda,
   istemciye genel hata mesajı gider.
+- Admin API için kullanıcı adı/şifre ve sabit süreli credential karşılaştırması kullanıldı. İlk
+  SMTP/Mailpit yaklaşımı kullanıcı yönlendirmesiyle kaldırıldı; yanıt akışı istemcide `mailto:`
+  olarak sınırlandı.
 
 ## Doğrulama kaydı
 
@@ -33,6 +36,8 @@
 - Docker Desktop testinde harici diskteki migration bind mount'unun boş bağlandığı ve gerçek form
   isteğinin `500` aldığı görüldü. Migration dosyaları PostgreSQL imajına alındı; idempotent migration
   servisi mevcut ve yeni volume'lerde API başlamadan önce çalışacak şekilde doğrulandı.
+- Yetkisiz admin isteğinin `401` aldığı; doğru Basic credentials ile liste ve detay endpoint'lerinin
+  çalıştığı Go testleri ve gerçek Docker API istekleriyle doğrulandı.
 
 ## Görev dağılımı
 

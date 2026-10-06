@@ -45,13 +45,17 @@ func main() {
 		logger.Error("database is unreachable", "error", err)
 		os.Exit(1)
 	}
+	requestStore := postgres.NewRequestStore(pool)
 
 	server := &http.Server{
 		Addr: cfg.HTTPAddr,
 		Handler: httpapi.NewRouter(httpapi.Dependencies{
 			Logger:         logger,
-			RequestStore:   postgres.NewRequestStore(pool),
+			RequestStore:   requestStore,
+			AdminStore:     requestStore,
 			AllowedOrigins: cfg.AllowedOrigins,
+			AdminUsername:  cfg.AdminUsername,
+			AdminPassword:  cfg.AdminPassword,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,

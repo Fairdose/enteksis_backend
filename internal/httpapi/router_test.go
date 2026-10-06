@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +17,21 @@ type stubStore struct {
 	created service.CreatedRequest
 	err     error
 	request service.Request
+}
+
+type stubAdminStore struct {
+	requests []service.ServiceRequest
+	request  service.ServiceRequest
+	listErr  error
+	getErr   error
+}
+
+func (store *stubAdminStore) ListRequests(_ context.Context) ([]service.ServiceRequest, error) {
+	return store.requests, store.listErr
+}
+
+func (store *stubAdminStore) GetRequest(_ context.Context, _ string) (service.ServiceRequest, error) {
+	return store.request, store.getErr
 }
 
 func (store *stubStore) CreateRequest(_ context.Context, request service.Request) (service.CreatedRequest, error) {
@@ -112,4 +128,58 @@ func TestCORSAllowsConfiguredOrigin(t *testing.T) {
 	if origin := recorder.Header().Get("Access-Control-Allow-Origin"); origin != "https://fairdose.github.io" {
 		t.Fatalf("unexpected allowed origin %q", origin)
 	}
+	if headers := recorder.Header().Get("Access-Control-Allow-Headers"); !strings.Contains(headers, "Authorization") {
+		t.Fatalf("authorization header is not allowed: %q", headers)
+	}
+}
+
+func TestAdminRequestsRequireCredentials(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/admin/requests", nil)
+	recorder := httptest.NewRecorder()
+
+	NewRouter(Dependencies{AdminUsername: "admin", AdminPassword: "secret"}).ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, recorder.Code)
+	}
+}
+
+func TestAdminListsRequests(t *testing.T) {
+	store := &stubAdminStore{requests: []service.ServiceRequest{{ID: "request-id", Name: "Ada Lovelace"}}}
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/admin/requests", nil)
+	request.Header.Set("Authorization", basicAuthorization("admin", "secret"))
+	recorder := httptest.NewRecorder()
+
+	NewRouter(Dependencies{AdminStore: store, AdminUsername: "admin", AdminPassword: "secret"}).ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), `"id":"request-id"`) {
+		t.Fatalf("response does not include request: %s", recorder.Body.String())
+	}
+}
+
+func TestAdminGetsRequestDetail(t *testing.T) {
+	store := &stubAdminStore{request: service.ServiceRequest{ID: "request-id", Email: "ada@example.com"}}
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/admin/requests/request-id", nil)
+	request.Header.Set("Authorization", basicAuthorization("admin", "secret"))
+	recorder := httptest.NewRecorder()
+
+	NewRouter(Dependencies{
+		AdminStore:    store,
+		AdminUsername: "admin",
+		AdminPassword: "secret",
+	}).ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), `"email":"ada@example.com"`) {
+		t.Fatalf("response does not include request detail: %s", recorder.Body.String())
+	}
+}
+
+func basicAuthorization(username, password string) string {
+	return "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password))
 }

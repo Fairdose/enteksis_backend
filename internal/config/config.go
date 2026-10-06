@@ -10,6 +10,8 @@ type Config struct {
 	HTTPAddr       string
 	DatabaseURL    string
 	AllowedOrigins []string
+	AdminUsername  string
+	AdminPassword  string
 }
 
 func Load() Config {
@@ -18,6 +20,8 @@ func Load() Config {
 		HTTPAddr:       valueOrDefault("HTTP_ADDR", ":8080"),
 		DatabaseURL:    os.Getenv("DATABASE_URL"),
 		AllowedOrigins: splitAndTrim(valueOrDefault("ALLOWED_ORIGINS", "http://localhost:5173")),
+		AdminUsername:  valueOrDefault("ADMIN_USERNAME", "admin"),
+		AdminPassword:  valueOrDefault("ADMIN_PASSWORD", "enteksis-local-admin"),
 	}
 }
 

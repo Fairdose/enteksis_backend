@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"crypto/subtle"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -25,13 +27,18 @@ var validServices = map[string]struct{}{
 type Dependencies struct {
 	Logger         *slog.Logger
 	RequestStore   service.RequestStore
+	AdminStore     service.AdminRequestStore
 	AllowedOrigins []string
+	AdminUsername  string
+	AdminPassword  string
 }
 
 type handler struct {
 	logger         *slog.Logger
 	requestStore   service.RequestStore
+	adminStore     service.AdminRequestStore
 	allowedOrigins map[string]struct{}
+	adminAuth      string
 }
 
 type createRequestPayload struct {
@@ -55,7 +62,9 @@ func NewRouter(dependencies Dependencies) http.Handler {
 	h := &handler{
 		logger:         logger,
 		requestStore:   dependencies.RequestStore,
+		adminStore:     dependencies.AdminStore,
 		allowedOrigins: make(map[string]struct{}, len(dependencies.AllowedOrigins)),
+		adminAuth:      "Basic " + base64.StdEncoding.EncodeToString([]byte(dependencies.AdminUsername+":"+dependencies.AdminPassword)),
 	}
 	for _, origin := range dependencies.AllowedOrigins {
 		h.allowedOrigins[origin] = struct{}{}
@@ -64,8 +73,61 @@ func NewRouter(dependencies Dependencies) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.HandleFunc("POST /api/v1/requests", h.createRequest)
+	mux.Handle("GET /api/v1/admin/requests", h.requireAdmin(http.HandlerFunc(h.listRequests)))
+	mux.Handle("GET /api/v1/admin/requests/{id}", h.requireAdmin(http.HandlerFunc(h.getRequest)))
 
 	return h.cors(mux)
+}
+
+func (h *handler) listRequests(w http.ResponseWriter, request *http.Request) {
+	if h.adminStore == nil {
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Talep deposu yapılandırılmadı."})
+		return
+	}
+	requests, err := h.adminStore.ListRequests(request.Context())
+	if err != nil {
+		h.logger.Error("service requests could not be listed", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Talepler yüklenemedi."})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": requests})
+}
+
+func (h *handler) getRequest(w http.ResponseWriter, request *http.Request) {
+	serviceRequest, err := h.findRequest(request)
+	if err != nil {
+		h.writeRequestLookupError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, serviceRequest)
+}
+
+func (h *handler) findRequest(request *http.Request) (service.ServiceRequest, error) {
+	if h.adminStore == nil {
+		return service.ServiceRequest{}, errors.New("admin request store is not configured")
+	}
+	return h.adminStore.GetRequest(request.Context(), request.PathValue("id"))
+}
+
+func (h *handler) writeRequestLookupError(w http.ResponseWriter, err error) {
+	if errors.Is(err, service.ErrRequestNotFound) {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Talep bulunamadı."})
+		return
+	}
+	h.logger.Error("service request could not be loaded", "error", err)
+	writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Talep yüklenemedi."})
+}
+
+func (h *handler) requireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		provided := request.Header.Get("Authorization")
+		if len(provided) != len(h.adminAuth) || subtle.ConstantTimeCompare([]byte(provided), []byte(h.adminAuth)) != 1 {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Enteksis Admin", charset="UTF-8"`)
+			writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "Yönetici erişimi gerekli."})
+			return
+		}
+		next.ServeHTTP(w, request)
+	})
 }
 
 func healthHandler(w http.ResponseWriter, _ *http.Request) {
@@ -146,7 +208,7 @@ func (h *handler) cors(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		}
 		if request.Method == http.MethodOptions {
 			if !allowed {

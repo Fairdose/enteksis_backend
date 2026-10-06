@@ -30,6 +30,8 @@ services:
       HTTP_ADDR: :8080
       DATABASE_URL: postgresql://${POSTGRES_USER:-enteksis}:${POSTGRES_PASSWORD:-enteksis_dev_password}@db:5432/${POSTGRES_DB:-enteksis}?sslmode=disable
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-enteksis-local-admin}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -43,7 +45,7 @@ services:
       PGDATABASE: ${POSTGRES_DB:-enteksis}
       PGUSER: ${POSTGRES_USER:-enteksis}
       PGPASSWORD: ${POSTGRES_PASSWORD:-enteksis_dev_password}
-    command: ["psql", "-v", "ON_ERROR_STOP=1", "-h", "db", "-f", "/migrations/001_create_service_requests.sql"]
+    command: ["sh", "-c", "for file in /migrations/*.sql; do psql -v ON_ERROR_STOP=1 -h db -f \"$$file\"; done"]
     depends_on:
       db:
         condition: service_healthy

@@ -28,6 +28,7 @@ kısıtlarından etkilenmez. Veriler `postgres-data` adlı Docker volume'ünde k
 - API: `http://localhost:8080`
 - Sağlık kontrolü: `GET http://localhost:8080/health`
 - PostgreSQL: `localhost:5432`
+- Admin arayüzü: `http://localhost:5173/admin`
 
 Kontrol etmek için:
 
@@ -52,6 +53,8 @@ Varsayılan geliştirme değerleri `compose.yaml` içinde güvenli olmayan yerel
 | `POSTGRES_USER` | `enteksis` | Veritabanı kullanıcısı |
 | `POSTGRES_PASSWORD` | `enteksis_dev_password` | Yalnızca yerel geliştirme parolası |
 | `ALLOWED_ORIGINS` | `http://localhost:5173` | Virgülle ayrılmış CORS origin listesi |
+| `ADMIN_USERNAME` | `admin` | Yerel admin kullanıcı adı |
+| `ADMIN_PASSWORD` | `enteksis-local-admin` | Yerel admin şifresi |
 
 `CLIENT_PORT` değiştirildiğinde `ALLOWED_ORIGINS` değerini de yeni origin ile birlikte değiştirin.
 
@@ -72,6 +75,15 @@ Kayıt ancak PostgreSQL insert işlemi başarıyla tamamlanırsa `201 Created` d
 `422 Unprocessable Entity`, geçersiz JSON `400 Bad Request`, kayıt hatası ise ayrıntı sızdırmadan
 `500 Internal Server Error` döndürür.
 
+### Admin endpoint'leri
+
+- `GET /api/v1/admin/requests`
+- `GET /api/v1/admin/requests/{id}`
+
+Admin endpoint'leri HTTP Basic kimlik doğrulaması gerektirir. Compose varsayılanları yalnızca yerel
+değerlendirme içindir; ortak veya production ortamında güçlü ve benzersiz değerlerle değiştirilmesi,
+trafiğin HTTPS üzerinden sunulması gerekir.
+
 ## Test
 
 Yerel Go kurulumu ile:
@@ -83,10 +95,15 @@ go test ./...
 Go kurulu değilse:
 
 ```sh
-docker run --rm -v "$PWD:/app" -w /app golang:1.25-alpine go test ./...
+docker compose build api
 ```
+
+API image build aşaması `go test ./...` çalıştırır ve testler başarısızsa image üretmez.
 
 ## Bilinen eksikler
 
 - Genel kullanıma açık bir form için production ortamında IP bazlı rate limiting eklenmelidir.
-- E-posta teslim bildirimi challenge kapsamı dışında bırakılmıştır.
+- Admin kimlik doğrulaması yerel challenge kapsamı için HTTP Basic kullanır; production için
+  kullanıcı tablosu, parola hash'i, güvenli session ve yetkilendirme rolleri gerekir.
+- E-posta yanıtı frontend'de `mailto:` ile cihazın posta uygulamasına aktarılır; gönderim durumu
+  sunucu tarafından izlenmez.
