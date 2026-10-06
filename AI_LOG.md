@@ -30,6 +30,9 @@
   origin kontrolünü kapsıyor.
 - Docker Compose ile PostgreSQL ve API birlikte başlatıldı; healthcheck geçti.
 - Gerçek POST isteği `201 Created` döndürdü ve satır `service_requests` tablosunda sorgulandı.
+- Docker Desktop testinde harici diskteki migration bind mount'unun boş bağlandığı ve gerçek form
+  isteğinin `500` aldığı görüldü. Migration dosyaları PostgreSQL imajına alındı; idempotent migration
+  servisi mevcut ve yeni volume'lerde API başlamadan önce çalışacak şekilde doğrulandı.
 
 ## Görev dağılımı
 

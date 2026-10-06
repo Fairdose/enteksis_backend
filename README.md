@@ -20,8 +20,9 @@ Client, API ve PostgreSQL'i birlikte başlatın:
 Windows'ta Git Bash veya WSL terminalinden `bash ./run.sh` kullanın. Aynı `run.sh` dosyası
 client deposunda da bulunur ve aynı Compose projesini yönetir.
 
-İlk başlangıçta `migrations/001_create_service_requests.sql` otomatik uygulanır. Veriler
-`postgres-data` adlı Docker volume'ünde kalıcı olarak saklanır.
+`migrations/001_create_service_requests.sql` PostgreSQL imajına alınır ve idempotent migration
+servisi tarafından her başlangıçta uygulanır. Bu yaklaşım Docker Desktop'ın harici disk bind mount
+kısıtlarından etkilenmez. Veriler `postgres-data` adlı Docker volume'ünde kalıcı olarak saklanır.
 
 - Client: `http://localhost:5173`
 - API: `http://localhost:8080`

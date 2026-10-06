@@ -31,11 +31,27 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-enteksis}:${POSTGRES_PASSWORD:-enteksis_dev_password}@db:5432/${POSTGRES_DB:-enteksis}?sslmode=disable
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
     depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Containerfile.postgres
+    restart: "no"
+    environment:
+      PGDATABASE: ${POSTGRES_DB:-enteksis}
+      PGUSER: ${POSTGRES_USER:-enteksis}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-enteksis_dev_password}
+    command: ["psql", "-v", "ON_ERROR_STOP=1", "-h", "db", "-f", "/migrations/001_create_service_requests.sql"]
+    depends_on:
       db:
         condition: service_healthy
 
   db:
-    image: docker.io/library/postgres:18-alpine
+    build:
+      context: .
+      dockerfile: Containerfile.postgres
     restart: unless-stopped
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
@@ -45,7 +61,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-enteksis_dev_password}
     volumes:
       - postgres-data:/var/lib/postgresql
-      - ./migrations:/docker-entrypoint-initdb.d:ro,Z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
