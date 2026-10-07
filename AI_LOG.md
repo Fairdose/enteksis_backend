@@ -28,6 +28,12 @@
   kaydı yerine kalıcı `Yeni`, `Okundu`, `Cevaplandı` durumları ve onaylı silme tercih edildi.
 - Son değerlendirme kontrolünde admin bilgileri zorunlu environment secret'larına taşındı ve
   `/health` yanıtı yalnız API değil PostgreSQL erişimini de doğrulayacak şekilde değiştirildi.
+- Kullanıcı tablosu, session, RBAC ve parola sıfırlama challenge kapsamını ve bütçelenemeyen
+  operasyon yükünü büyütmemek için eklenmedi. Genişletilmiş üretim tasarımında hash'lenmiş parola,
+  SMTP, reCAPTCHA ve 2FA birlikte ele alınmalıydı. Özel SMTP servisi açılmadığı; Mailpit, mTLS ve
+  sunucu güvenliği de kapsamı büyüteceği için `mailto:` akışı korundu.
+- Sunucu taraflı sayfalama ve gelişmiş arama, veri hacmi ve arama gereksinimleri netleşmeden indeks,
+  algoritma ve cache tercihi yapmak spekülatif olacağı için uygulanmadı.
 
 ## Doğrulama kaydı
 

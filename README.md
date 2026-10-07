@@ -109,10 +109,18 @@ API image build aşaması `go test ./...` çalıştırır ve testler başarısı
 
 ## Bilinen eksikler
 
-- Admin kimlik doğrulaması yerel challenge kapsamı için HTTP Basic kullanır; production için
-  kullanıcı tablosu, parola hash'i, güvenli session ve yetkilendirme rolleri gerekir.
+- Admin kimlik doğrulaması environment üzerinden sağlanan statik bilgiler ve HTTP Basic kullanır;
+  kullanıcı yönetimi, parola sıfırlama, rol bazlı yetkilendirme ve sunucu taraflı oturum sistemi
+  yoktur. Challenge kapsamını ve bütçelenemeyen operasyon yükünü büyütmemek için eklenmedi. Üretim
+  kapsamı genişletilseydi kullanıcı tablosu, hash'lenmiş parolalar, güvenli session, SMTP tabanlı
+  parola sıfırlama, reCAPTCHA ve 2FA birlikte ele alınırdı.
 - Public form production Nginx üzerinde IP bazlı rate limiting ile korunur; yerel Compose ortamında
   bu reverse proxy katmanı bulunmaz.
 - Production Nginx admin API denemelerine daha sıkı, IP bazlı ayrı bir rate limit uygular.
 - E-posta yanıtı frontend'de `mailto:` ile cihazın posta uygulamasına aktarılır; gönderim durumu
-  otomatik doğrulanamaz. Yönetici, talebi gönderimden sonra açıkça `Cevaplandı` olarak işaretler.
+  otomatik doğrulanamaz. Mevcut SMTP servisi özel altyapıda çalıştığı için bu projeye açılmadı.
+  Mailpit ile test edilebilirdi ancak sunucu güvenliği ve mTLS entegrasyonu challenge kapsamını
+  genişleteceğinden uygulanmadı; yönetici durumu açıkça `Cevaplandı` olarak işaretler.
+- API liste endpoint'i küçük challenge veri setini tek seferde döndürür; sunucu taraflı sayfalama ve
+  gelişmiş arama yoktur. Çözüm beklenen hacim ve aranan alanlara göre indeks, arama algoritması ve
+  gerekirse cache seçimi gerektirdiğinden gereksinim oluşmadan spekülatif altyapı eklenmedi.
