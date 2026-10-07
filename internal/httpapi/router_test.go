@@ -20,10 +20,14 @@ type stubStore struct {
 }
 
 type stubAdminStore struct {
-	requests []service.ServiceRequest
-	request  service.ServiceRequest
-	listErr  error
-	getErr   error
+	requests      []service.ServiceRequest
+	request       service.ServiceRequest
+	listErr       error
+	getErr        error
+	updateErr     error
+	deleteErr     error
+	updatedStatus service.RequestStatus
+	deleted       bool
 }
 
 func (store *stubAdminStore) ListRequests(_ context.Context) ([]service.ServiceRequest, error) {
@@ -32,6 +36,21 @@ func (store *stubAdminStore) ListRequests(_ context.Context) ([]service.ServiceR
 
 func (store *stubAdminStore) GetRequest(_ context.Context, _ string) (service.ServiceRequest, error) {
 	return store.request, store.getErr
+}
+
+func (store *stubAdminStore) UpdateRequestStatus(
+	_ context.Context,
+	_ string,
+	status service.RequestStatus,
+) (service.ServiceRequest, error) {
+	store.updatedStatus = status
+	store.request.Status = status
+	return store.request, store.updateErr
+}
+
+func (store *stubAdminStore) DeleteRequest(_ context.Context, _ string) error {
+	store.deleted = true
+	return store.deleteErr
 }
 
 func (store *stubStore) CreateRequest(_ context.Context, request service.Request) (service.CreatedRequest, error) {
@@ -131,6 +150,9 @@ func TestCORSAllowsConfiguredOrigin(t *testing.T) {
 	if headers := recorder.Header().Get("Access-Control-Allow-Headers"); !strings.Contains(headers, "Authorization") {
 		t.Fatalf("authorization header is not allowed: %q", headers)
 	}
+	if methods := recorder.Header().Get("Access-Control-Allow-Methods"); !strings.Contains(methods, "PATCH") || !strings.Contains(methods, "DELETE") {
+		t.Fatalf("admin mutation methods are not allowed: %q", methods)
+	}
 }
 
 func TestAdminRequestsRequireCredentials(t *testing.T) {
@@ -173,6 +195,53 @@ func TestAdminGetsRequestDetail(t *testing.T) {
 	}
 	if !strings.Contains(recorder.Body.String(), `"email":"ada@example.com"`) {
 		t.Fatalf("response does not include request detail: %s", recorder.Body.String())
+	}
+}
+
+func TestAdminUpdatesRequestStatus(t *testing.T) {
+	store := &stubAdminStore{request: service.ServiceRequest{ID: "request-id"}}
+	request := httptest.NewRequest(
+		http.MethodPatch,
+		"/api/v1/admin/requests/request-id",
+		strings.NewReader(`{"status":"replied"}`),
+	)
+	request.Header.Set("Authorization", basicAuthorization("admin", "123456admin"))
+	recorder := httptest.NewRecorder()
+
+	NewRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK || store.updatedStatus != service.RequestStatusReplied {
+		t.Fatalf("status was not updated: code=%d status=%q", recorder.Code, store.updatedStatus)
+	}
+}
+
+func TestAdminRejectsInvalidRequestStatus(t *testing.T) {
+	store := &stubAdminStore{}
+	request := httptest.NewRequest(
+		http.MethodPatch,
+		"/api/v1/admin/requests/request-id",
+		strings.NewReader(`{"status":"archived"}`),
+	)
+	request.Header.Set("Authorization", basicAuthorization("admin", "123456admin"))
+	recorder := httptest.NewRecorder()
+
+	NewRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected status %d, got %d", http.StatusUnprocessableEntity, recorder.Code)
+	}
+}
+
+func TestAdminDeletesRequest(t *testing.T) {
+	store := &stubAdminStore{}
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/requests/request-id", nil)
+	request.Header.Set("Authorization", basicAuthorization("admin", "123456admin"))
+	recorder := httptest.NewRecorder()
+
+	NewRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusNoContent || !store.deleted {
+		t.Fatalf("request was not deleted: code=%d deleted=%t", recorder.Code, store.deleted)
 	}
 }
 

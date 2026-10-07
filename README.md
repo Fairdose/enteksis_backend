@@ -80,6 +80,8 @@ Kayıt ancak PostgreSQL insert işlemi başarıyla tamamlanırsa `201 Created` d
 
 - `GET /api/v1/admin/requests`
 - `GET /api/v1/admin/requests/{id}`
+- `PATCH /api/v1/admin/requests/{id}` — `new`, `read` veya `replied` durumunu kaydeder
+- `DELETE /api/v1/admin/requests/{id}`
 
 Admin endpoint'leri HTTP Basic kimlik doğrulaması gerektirir. Compose varsayılanları yalnızca yerel
 değerlendirme içindir; ortak veya production ortamında güçlü ve benzersiz değerlerle değiştirilmesi,
@@ -107,4 +109,4 @@ API image build aşaması `go test ./...` çalıştırır ve testler başarısı
 - Admin kimlik doğrulaması yerel challenge kapsamı için HTTP Basic kullanır; production için
   kullanıcı tablosu, parola hash'i, güvenli session ve yetkilendirme rolleri gerekir.
 - E-posta yanıtı frontend'de `mailto:` ile cihazın posta uygulamasına aktarılır; gönderim durumu
-  sunucu tarafından izlenmez.
+  otomatik doğrulanamaz. Yönetici, talebi gönderimden sonra açıkça `Cevaplandı` olarak işaretler.

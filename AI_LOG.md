@@ -24,6 +24,8 @@
   yanıt akışı istemcide `mailto:` olarak sınırlandı.
 - Uygulama ve yerel runtime kimliği kullanıcı yönlendirmesiyle `Ent Challange` olarak değiştirildi;
   mevcut GitHub repo yolları dış entegrasyonları bozmamak için korundu.
+- Yönetim talepleri CRUD akışına genişletildi. `mailto:` gönderimi doğrulanamadığından otomatik cevap
+  kaydı yerine kalıcı `Yeni`, `Okundu`, `Cevaplandı` durumları ve onaylı silme tercih edildi.
 
 ## Doğrulama kaydı
 
@@ -40,6 +42,11 @@
   servisi mevcut ve yeni volume'lerde API başlamadan önce çalışacak şekilde doğrulandı.
 - Yetkisiz admin isteğinin `401` aldığı; doğru Basic credentials ile liste ve detay endpoint'lerinin
   çalıştığı Go testleri ve gerçek Docker API istekleriyle doğrulandı.
+- Durum güncelleme, geçersiz durum reddi ve silme endpoint'leri Go handler testleriyle doğrulandı.
+- İlk CRUD E2E çalıştırmasında PostgreSQL'in durum parametresini `CASE` içinde belirsiz tür olarak
+  değerlendirdiği ve tarayıcı CORS politikasında `PATCH`/`DELETE` izinlerinin eksik olduğu görüldü.
+  Açık SQL cast'i ve daraltılmış method allowlist ile düzeltildi; durumun API restart'ından sonra
+  korunduğu ve silmenin `204` döndürdüğü gerçek PostgreSQL üzerinde doğrulandı.
 
 ## Görev dağılımı
 

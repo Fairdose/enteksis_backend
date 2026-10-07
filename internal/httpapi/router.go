@@ -17,8 +17,8 @@ import (
 
 const (
 	maxRequestBodySize = 16 << 10
-	adminUsername     = "admin"
-	adminPassword     = "123456admin"
+	adminUsername      = "admin"
+	adminPassword      = "123456admin"
 )
 
 var validServices = map[string]struct{}{
@@ -55,6 +55,10 @@ type errorResponse struct {
 	Fields map[string]string `json:"fields,omitempty"`
 }
 
+type updateRequestPayload struct {
+	Status service.RequestStatus `json:"status"`
+}
+
 func NewRouter(dependencies Dependencies) http.Handler {
 	logger := dependencies.Logger
 	if logger == nil {
@@ -77,6 +81,8 @@ func NewRouter(dependencies Dependencies) http.Handler {
 	mux.HandleFunc("POST /api/v1/requests", h.createRequest)
 	mux.Handle("GET /api/v1/admin/requests", h.requireAdmin(http.HandlerFunc(h.listRequests)))
 	mux.Handle("GET /api/v1/admin/requests/{id}", h.requireAdmin(http.HandlerFunc(h.getRequest)))
+	mux.Handle("PATCH /api/v1/admin/requests/{id}", h.requireAdmin(http.HandlerFunc(h.updateRequest)))
+	mux.Handle("DELETE /api/v1/admin/requests/{id}", h.requireAdmin(http.HandlerFunc(h.deleteRequest)))
 
 	return h.cors(mux)
 }
@@ -102,6 +108,57 @@ func (h *handler) getRequest(w http.ResponseWriter, request *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, serviceRequest)
+}
+
+func (h *handler) updateRequest(w http.ResponseWriter, request *http.Request) {
+	if h.adminStore == nil {
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Talep deposu yapılandırılmadı."})
+		return
+	}
+	request.Body = http.MaxBytesReader(w, request.Body, maxRequestBodySize)
+	decoder := json.NewDecoder(request.Body)
+	decoder.DisallowUnknownFields()
+
+	var payload updateRequestPayload
+	if err := decoder.Decode(&payload); err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Geçersiz istek gövdesi."})
+		return
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "İstek tek bir JSON nesnesi içermelidir."})
+		return
+	}
+	if payload.Status != service.RequestStatusNew &&
+		payload.Status != service.RequestStatusRead &&
+		payload.Status != service.RequestStatusReplied {
+		writeJSON(w, http.StatusUnprocessableEntity, errorResponse{Error: "Geçersiz talep durumu."})
+		return
+	}
+
+	updated, err := h.adminStore.UpdateRequestStatus(request.Context(), request.PathValue("id"), payload.Status)
+	if err != nil {
+		h.writeRequestLookupError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, updated)
+}
+
+func (h *handler) deleteRequest(w http.ResponseWriter, request *http.Request) {
+	if h.adminStore == nil {
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Talep deposu yapılandırılmadı."})
+		return
+	}
+	err := h.adminStore.DeleteRequest(request.Context(), request.PathValue("id"))
+	if errors.Is(err, service.ErrRequestNotFound) {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Talep bulunamadı."})
+		return
+	}
+	if err != nil {
+		h.logger.Error("service request could not be deleted", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Talep silinemedi."})
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *handler) findRequest(request *http.Request) (service.ServiceRequest, error) {
@@ -209,7 +266,7 @@ func (h *handler) cors(next http.Handler) http.Handler {
 		if origin != "" && allowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		}
 		if request.Method == http.MethodOptions {
