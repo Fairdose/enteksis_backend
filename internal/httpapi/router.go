@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
@@ -10,16 +11,13 @@ import (
 	"net/http"
 	"net/mail"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/Fairdose/enteksis_backend/internal/service"
 )
 
-const (
-	maxRequestBodySize = 16 << 10
-	adminUsername      = "admin"
-	adminPassword      = "123456admin"
-)
+const maxRequestBodySize = 16 << 10
 
 var validServices = map[string]struct{}{
 	"web-design":           {},
@@ -32,13 +30,17 @@ type Dependencies struct {
 	Logger         *slog.Logger
 	RequestStore   service.RequestStore
 	AdminStore     service.AdminRequestStore
+	HealthChecker  interface{ Ping(context.Context) error }
 	AllowedOrigins []string
+	AdminUsername  string
+	AdminPassword  string
 }
 
 type handler struct {
 	logger         *slog.Logger
 	requestStore   service.RequestStore
 	adminStore     service.AdminRequestStore
+	healthChecker  interface{ Ping(context.Context) error }
 	allowedOrigins map[string]struct{}
 	adminAuth      string
 }
@@ -69,15 +71,16 @@ func NewRouter(dependencies Dependencies) http.Handler {
 		logger:         logger,
 		requestStore:   dependencies.RequestStore,
 		adminStore:     dependencies.AdminStore,
+		healthChecker:  dependencies.HealthChecker,
 		allowedOrigins: make(map[string]struct{}, len(dependencies.AllowedOrigins)),
-		adminAuth:      "Basic " + base64.StdEncoding.EncodeToString([]byte(adminUsername+":"+adminPassword)),
+		adminAuth:      "Basic " + base64.StdEncoding.EncodeToString([]byte(dependencies.AdminUsername+":"+dependencies.AdminPassword)),
 	}
 	for _, origin := range dependencies.AllowedOrigins {
 		h.allowedOrigins[origin] = struct{}{}
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", healthHandler)
+	mux.HandleFunc("GET /health", h.healthHandler)
 	mux.HandleFunc("POST /api/v1/requests", h.createRequest)
 	mux.Handle("GET /api/v1/admin/requests", h.requireAdmin(http.HandlerFunc(h.listRequests)))
 	mux.Handle("GET /api/v1/admin/requests/{id}", h.requireAdmin(http.HandlerFunc(h.getRequest)))
@@ -189,7 +192,16 @@ func (h *handler) requireAdmin(next http.Handler) http.Handler {
 	})
 }
 
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
+func (h *handler) healthHandler(w http.ResponseWriter, request *http.Request) {
+	if h.healthChecker != nil {
+		ctx, cancel := context.WithTimeout(request.Context(), 2*time.Second)
+		defer cancel()
+		if err := h.healthChecker.Ping(ctx); err != nil {
+			h.logger.Error("health check failed", "error", err)
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable"})
+			return
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

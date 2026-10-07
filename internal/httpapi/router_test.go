@@ -13,10 +13,29 @@ import (
 	"github.com/Fairdose/enteksis_backend/internal/service"
 )
 
+const (
+	testAdminUsername = "admin@example.invalid"
+	testAdminPassword = "test-only-password"
+)
+
+func newTestRouter(dependencies Dependencies) http.Handler {
+	dependencies.AdminUsername = testAdminUsername
+	dependencies.AdminPassword = testAdminPassword
+	return NewRouter(dependencies)
+}
+
 type stubStore struct {
 	created service.CreatedRequest
 	err     error
 	request service.Request
+}
+
+type stubHealthChecker struct {
+	err error
+}
+
+func (checker stubHealthChecker) Ping(context.Context) error {
+	return checker.err
 }
 
 type stubAdminStore struct {
@@ -62,12 +81,27 @@ func TestHealth(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/health", nil)
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{}).ServeHTTP(recorder, request)
+	newTestRouter(Dependencies{}).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
 	}
 	if body := recorder.Body.String(); body != "{\"status\":\"ok\"}\n" {
+		t.Fatalf("unexpected response body %q", body)
+	}
+}
+
+func TestHealthReportsDatabaseFailure(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/health", nil)
+	recorder := httptest.NewRecorder()
+
+	newTestRouter(Dependencies{HealthChecker: stubHealthChecker{err: errors.New("database unavailable")}}).
+		ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status %d, got %d", http.StatusServiceUnavailable, recorder.Code)
+	}
+	if body := recorder.Body.String(); body != "{\"status\":\"unavailable\"}\n" {
 		t.Fatalf("unexpected response body %q", body)
 	}
 }
@@ -84,7 +118,7 @@ func TestCreateRequestStoresValidatedPayload(t *testing.T) {
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{RequestStore: store}).ServeHTTP(recorder, request)
+	newTestRouter(Dependencies{RequestStore: store}).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, recorder.Code, recorder.Body.String())
@@ -104,7 +138,7 @@ func TestCreateRequestRejectsInvalidFields(t *testing.T) {
 	}`))
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{RequestStore: store}).ServeHTTP(recorder, request)
+	newTestRouter(Dependencies{RequestStore: store}).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("expected status %d, got %d", http.StatusUnprocessableEntity, recorder.Code)
@@ -125,7 +159,7 @@ func TestCreateRequestDoesNotReportSuccessWhenStorageFails(t *testing.T) {
 	}`))
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{RequestStore: &stubStore{err: errors.New("database unavailable")}}).
+	newTestRouter(Dependencies{RequestStore: &stubStore{err: errors.New("database unavailable")}}).
 		ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusInternalServerError {
@@ -138,7 +172,7 @@ func TestCORSAllowsConfiguredOrigin(t *testing.T) {
 	request.Header.Set("Origin", "https://fairdose.github.io")
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{AllowedOrigins: []string{"https://fairdose.github.io"}}).
+	newTestRouter(Dependencies{AllowedOrigins: []string{"https://fairdose.github.io"}}).
 		ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusNoContent {
@@ -159,7 +193,7 @@ func TestAdminRequestsRequireCredentials(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/admin/requests", nil)
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{}).ServeHTTP(recorder, request)
+	newTestRouter(Dependencies{}).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, recorder.Code)
@@ -169,10 +203,10 @@ func TestAdminRequestsRequireCredentials(t *testing.T) {
 func TestAdminListsRequests(t *testing.T) {
 	store := &stubAdminStore{requests: []service.ServiceRequest{{ID: "request-id", Name: "Ada Lovelace"}}}
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/admin/requests", nil)
-	request.Header.Set("Authorization", basicAuthorization("admin", "123456admin"))
+	request.Header.Set("Authorization", basicAuthorization(testAdminUsername, testAdminPassword))
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
+	newTestRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, recorder.Code, recorder.Body.String())
@@ -185,10 +219,10 @@ func TestAdminListsRequests(t *testing.T) {
 func TestAdminGetsRequestDetail(t *testing.T) {
 	store := &stubAdminStore{request: service.ServiceRequest{ID: "request-id", Email: "ada@example.com"}}
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/admin/requests/request-id", nil)
-	request.Header.Set("Authorization", basicAuthorization("admin", "123456admin"))
+	request.Header.Set("Authorization", basicAuthorization(testAdminUsername, testAdminPassword))
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
+	newTestRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, recorder.Code, recorder.Body.String())
@@ -205,10 +239,10 @@ func TestAdminUpdatesRequestStatus(t *testing.T) {
 		"/api/v1/admin/requests/request-id",
 		strings.NewReader(`{"status":"replied"}`),
 	)
-	request.Header.Set("Authorization", basicAuthorization("admin", "123456admin"))
+	request.Header.Set("Authorization", basicAuthorization(testAdminUsername, testAdminPassword))
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
+	newTestRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK || store.updatedStatus != service.RequestStatusReplied {
 		t.Fatalf("status was not updated: code=%d status=%q", recorder.Code, store.updatedStatus)
@@ -222,10 +256,10 @@ func TestAdminRejectsInvalidRequestStatus(t *testing.T) {
 		"/api/v1/admin/requests/request-id",
 		strings.NewReader(`{"status":"archived"}`),
 	)
-	request.Header.Set("Authorization", basicAuthorization("admin", "123456admin"))
+	request.Header.Set("Authorization", basicAuthorization(testAdminUsername, testAdminPassword))
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
+	newTestRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("expected status %d, got %d", http.StatusUnprocessableEntity, recorder.Code)
@@ -235,10 +269,10 @@ func TestAdminRejectsInvalidRequestStatus(t *testing.T) {
 func TestAdminDeletesRequest(t *testing.T) {
 	store := &stubAdminStore{}
 	request := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/requests/request-id", nil)
-	request.Header.Set("Authorization", basicAuthorization("admin", "123456admin"))
+	request.Header.Set("Authorization", basicAuthorization(testAdminUsername, testAdminPassword))
 	recorder := httptest.NewRecorder()
 
-	NewRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
+	newTestRouter(Dependencies{AdminStore: store}).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusNoContent || !store.deleted {
 		t.Fatalf("request was not deleted: code=%d deleted=%t", recorder.Code, store.deleted)

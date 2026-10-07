@@ -23,6 +23,10 @@ func main() {
 		logger.Error("DATABASE_URL is required")
 		os.Exit(1)
 	}
+	if cfg.AdminUsername == "" || cfg.AdminPassword == "" {
+		logger.Error("ADMIN_USERNAME and ADMIN_PASSWORD are required")
+		os.Exit(1)
+	}
 
 	startupContext, cancelStartup := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelStartup()
@@ -53,7 +57,10 @@ func main() {
 			Logger:         logger,
 			RequestStore:   requestStore,
 			AdminStore:     requestStore,
+			HealthChecker:  pool,
 			AllowedOrigins: cfg.AllowedOrigins,
+			AdminUsername:  cfg.AdminUsername,
+			AdminPassword:  cfg.AdminPassword,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,

@@ -30,6 +30,8 @@ services:
       HTTP_ADDR: :8080
       DATABASE_URL: postgresql://${POSTGRES_USER:-ent_challange}:${POSTGRES_PASSWORD:-ent_challange_dev_password}@db:5432/${POSTGRES_DB:-ent_challange}?sslmode=disable
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?ADMIN_USERNAME must be set}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set}
     depends_on:
       migrate:
         condition: service_completed_successfully

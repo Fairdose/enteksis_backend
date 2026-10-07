@@ -19,13 +19,15 @@
   Windows'ta Git Bash/WSL gereksinimi açıkça belgelendi.
 - Database hatalarının istemciye ayrıntılı dönmesi reddedildi; ayrıntı yalnızca server log'unda,
   istemciye genel hata mesajı gider.
-- Admin API için kullanıcı yönlendirmesiyle `admin` / `123456admin` bilgileri statik tutuldu ve
-  sabit süreli credential karşılaştırması kullanıldı. İlk SMTP/Mailpit yaklaşımı kaldırıldı;
+- Admin API için başlangıçta statik tutulan bilgiler son güvenlik kontrolünde environment secret'a
+  taşındı; sabit süreli credential karşılaştırması korundu. İlk SMTP/Mailpit yaklaşımı kaldırıldı;
   yanıt akışı istemcide `mailto:` olarak sınırlandı.
 - Uygulama ve yerel runtime kimliği kullanıcı yönlendirmesiyle `Ent Challange` olarak değiştirildi;
   mevcut GitHub repo yolları dış entegrasyonları bozmamak için korundu.
 - Yönetim talepleri CRUD akışına genişletildi. `mailto:` gönderimi doğrulanamadığından otomatik cevap
   kaydı yerine kalıcı `Yeni`, `Okundu`, `Cevaplandı` durumları ve onaylı silme tercih edildi.
+- Son değerlendirme kontrolünde admin bilgileri zorunlu environment secret'larına taşındı ve
+  `/health` yanıtı yalnız API değil PostgreSQL erişimini de doğrulayacak şekilde değiştirildi.
 
 ## Doğrulama kaydı
 
@@ -47,6 +49,7 @@
   değerlendirdiği ve tarayıcı CORS politikasında `PATCH`/`DELETE` izinlerinin eksik olduğu görüldü.
   Açık SQL cast'i ve daraltılmış method allowlist ile düzeltildi; durumun API restart'ından sonra
   korunduğu ve silmenin `204` döndürdüğü gerçek PostgreSQL üzerinde doğrulandı.
+- Database health başarısızlığının `503` döndürmesi handler testiyle doğrulandı.
 
 ## Görev dağılımı
 

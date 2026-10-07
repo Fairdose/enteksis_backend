@@ -14,6 +14,8 @@ Ent Challange hizmet talep formu için Go HTTP API'si ve PostgreSQL veritabanı.
 Client, API ve PostgreSQL'i birlikte başlatın:
 
 ```sh
+cp .env.example .env
+# .env içindeki admin kimlik bilgilerini teslim kanalındaki değerlerle değiştirin.
 ./run.sh
 ```
 
@@ -26,7 +28,7 @@ kısıtlarından etkilenmez. Veriler `postgres-data` adlı Docker volume'ünde k
 
 - Client: `http://localhost:5173`
 - API: `http://localhost:8080`
-- Sağlık kontrolü: `GET http://localhost:8080/health`
+- PostgreSQL bağlantısını da sınayan sağlık kontrolü: `GET http://localhost:8080/health`
 - PostgreSQL: `localhost:5432`
 - Admin arayüzü: `http://localhost:5173/admin`
 
@@ -42,7 +44,8 @@ durum için `./run.sh status` kullanın. Script veri volume'ünü silen bir komu
 ## Yapılandırma
 
 Varsayılan geliştirme değerleri `compose.yaml` içinde güvenli olmayan yerel değerlerdir. İsterseniz
-`.env.example` dosyasını `.env` olarak kopyalayıp portları ve parolayı değiştirebilirsiniz.
+`.env.example` dosyasını `.env` olarak kopyalayıp portları, veritabanı parolasını ve zorunlu admin
+kimlik bilgilerini değiştirmelisiniz.
 
 | Değişken | Varsayılan | Açıklama |
 | --- | --- | --- |
@@ -53,11 +56,13 @@ Varsayılan geliştirme değerleri `compose.yaml` içinde güvenli olmayan yerel
 | `POSTGRES_USER` | `ent_challange` | Veritabanı kullanıcısı |
 | `POSTGRES_PASSWORD` | `ent_challange_dev_password` | Yalnızca yerel geliştirme parolası |
 | `ALLOWED_ORIGINS` | `http://localhost:5173` | Virgülle ayrılmış CORS origin listesi |
+| `ADMIN_USERNAME` | — | Admin giriş e-postası; zorunlu secret |
+| `ADMIN_PASSWORD` | — | Admin parolası; zorunlu secret |
 
 `CLIENT_PORT` değiştirildiğinde `ALLOWED_ORIGINS` değerini de yeni origin ile birlikte değiştirin.
 
-Admin girişi challenge gereği statiktir: kullanıcı adı `admin`, şifre `123456admin`. Bu yaklaşım
-üretim ortamı için uygun değildir.
+Admin kimlik bilgileri environment üzerinden alınır ve repoya yazılmaz. Değerlendirme bilgileri
+teslim kanalıyla ayrıca paylaşılır.
 
 ## Endpoint'ler
 
@@ -83,9 +88,8 @@ Kayıt ancak PostgreSQL insert işlemi başarıyla tamamlanırsa `201 Created` d
 - `PATCH /api/v1/admin/requests/{id}` — `new`, `read` veya `replied` durumunu kaydeder
 - `DELETE /api/v1/admin/requests/{id}`
 
-Admin endpoint'leri HTTP Basic kimlik doğrulaması gerektirir. Compose varsayılanları yalnızca yerel
-değerlendirme içindir; ortak veya production ortamında güçlü ve benzersiz değerlerle değiştirilmesi,
-trafiğin HTTPS üzerinden sunulması gerekir.
+Admin endpoint'leri HTTP Basic kimlik doğrulaması gerektirir. Kimlik bilgileri yalnız environment
+üzerinden sağlanır; production trafiği HTTPS üzerinden sunulur.
 
 ## Test
 
@@ -105,8 +109,10 @@ API image build aşaması `go test ./...` çalıştırır ve testler başarısı
 
 ## Bilinen eksikler
 
-- Genel kullanıma açık bir form için production ortamında IP bazlı rate limiting eklenmelidir.
 - Admin kimlik doğrulaması yerel challenge kapsamı için HTTP Basic kullanır; production için
   kullanıcı tablosu, parola hash'i, güvenli session ve yetkilendirme rolleri gerekir.
+- Public form production Nginx üzerinde IP bazlı rate limiting ile korunur; yerel Compose ortamında
+  bu reverse proxy katmanı bulunmaz.
+- Production Nginx admin API denemelerine daha sıkı, IP bazlı ayrı bir rate limit uygular.
 - E-posta yanıtı frontend'de `mailto:` ile cihazın posta uygulamasına aktarılır; gönderim durumu
   otomatik doğrulanamaz. Yönetici, talebi gönderimden sonra açıkça `Cevaplandı` olarak işaretler.
