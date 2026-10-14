@@ -1,5 +1,28 @@
 # AI_LOG
 
+## İkinci faz — 14 Ekim 2026
+
+### Kullanılan araçlar ve kaynaklar
+
+- Codex: Go HTTP uçları, auth, transaction sınırları, migration runner, test ve dokümantasyon.
+- Context7: Vue Composition API ve pgx transaction/pool belgeleri; SQL davranışı ayrıca gerçek PostgreSQL üzerinde sınandı.
+- Podman/Compose ve PostgreSQL: kanonik beş geçişin sıralı kurulumu, tekrar açılış, DDL ve v2.1.5 integrity suite.
+
+### Teknik kararlar
+
+- Kanonik `003`–`007` SQL içerikleri değiştirilmedi; `migrate.sh` her dosyayı ve uygulama kaydını tek transaction içinde işler. Production Compose aynı migrator'ı kullanır. Eski `service_requests` geçişleri korunur.
+- `008_create_auth_sessions.sql` kanonik domain şemasına ek uygulama katmanıdır. Parola özeti Go standart kütüphanesindeki PBKDF2-SHA256 ile üretilir; access/refresh anahtarlarının yalnız SHA-256 özetleri veritabanında tutulur. Refresh anahtarları döndürülür, logout oturumu iptal eder.
+- `TaskAssignment` tek sorumluluk kaynağıdır. `allowed_actions` görev rolü ve aktif grant verisiyle sunucuda hesaplanır; mutasyon anında yeniden yetkilendirme yapılır. Eski primary assignment kimliğiyle reassign `409` döner.
+- Görev mutasyonları `(workspace, actor, endpoint, key)` kapsamlı idempotency kaydı ve iş sonucu ile aynı transaction içindedir. Audit/outbox da aynı işlemde yazılır. Çoklu blocker'da son açık engel çözülmeden durum ilerlemez.
+- V0.1 odak akışında takım yönetimi, genel düzenleme ve yorum/ek dosya uçları açılmadı; kanonik şema bu nesneleri barındırır.
+
+### Doğrulama
+
+- `go test ./...`, `go vet ./...` ve container image build geçti.
+- Kanonik `enteksis_v0.1_v2.1.3_ddl_tests.sql` ile `enteksis_v0.1_v2.1.5_integrity_tests.sql` PostgreSQL üzerinde PASS verdi.
+- API üzerinden görev, engel, zorunlu kanıt, revizyon, yeniden teslim/kabul, aynı anahtarın tekrarı ve farklı gövde 409, iki engel çözümü, stale reassign 409, ekip hesabı giriş/refresh/logout ve yetkisiz 403 senaryoları çalıştırıldı.
+
+
 ## Kullanılan araçlar
 
 - Codex: Go API, migration, Docker Compose, testler ve dokümantasyon
@@ -28,10 +51,9 @@
   kaydı yerine kalıcı `Yeni`, `Okundu`, `Cevaplandı` durumları ve onaylı silme tercih edildi.
 - Son değerlendirme kontrolünde admin bilgileri zorunlu environment secret'larına taşındı ve
   `/health` yanıtı yalnız API değil PostgreSQL erişimini de doğrulayacak şekilde değiştirildi.
-- Kullanıcı tablosu, session, RBAC ve parola sıfırlama challenge kapsamını ve bütçelenemeyen
-  operasyon yükünü büyütmemek için eklenmedi. Genişletilmiş üretim tasarımında hash'lenmiş parola,
-  SMTP, reCAPTCHA ve 2FA birlikte ele alınmalıydı. Özel SMTP servisi açılmadığı; Mailpit, mTLS ve
-  sunucu güvenliği de kapsamı büyüteceği için `mailto:` akışı korundu.
+- İlk fazda kullanıcı tablosu ve oturum açılmamıştı. İkinci fazda hesap, hash'lenmiş parola,
+  oturum ve görev yetkileri eklendi. Self servis parola sıfırlama, 2FA ve özel SMTP hâlâ kapsam dışı;
+  eski hizmet talebi yanıtı `mailto:` olarak kalır.
 - Sunucu taraflı sayfalama ve gelişmiş arama, veri hacmi ve arama gereksinimleri netleşmeden indeks,
   algoritma ve cache tercihi yapmak spekülatif olacağı için uygulanmadı.
 

@@ -22,9 +22,7 @@ select_engine() {
     return
   fi
 
-  if command -v docker >/dev/null 2>&1; then
-    docker info >/dev/null 2>&1 ||
-      fail "Docker bulundu ancak çalışmıyor. Docker Desktop veya Docker Engine'i başlatın."
+  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
     printf 'docker'
     return
   fi

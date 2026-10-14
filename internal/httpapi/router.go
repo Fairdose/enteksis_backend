@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Fairdose/enteksis_backend/internal/service"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const maxRequestBodySize = 16 << 10
@@ -34,6 +35,7 @@ type Dependencies struct {
 	AllowedOrigins []string
 	AdminUsername  string
 	AdminPassword  string
+	DeskPool       *pgxpool.Pool
 }
 
 type handler struct {
@@ -43,6 +45,8 @@ type handler struct {
 	healthChecker  interface{ Ping(context.Context) error }
 	allowedOrigins map[string]struct{}
 	adminAuth      string
+	deskPool       *pgxpool.Pool
+	adminUsername  string
 }
 
 type createRequestPayload struct {
@@ -74,6 +78,8 @@ func NewRouter(dependencies Dependencies) http.Handler {
 		healthChecker:  dependencies.HealthChecker,
 		allowedOrigins: make(map[string]struct{}, len(dependencies.AllowedOrigins)),
 		adminAuth:      "Basic " + base64.StdEncoding.EncodeToString([]byte(dependencies.AdminUsername+":"+dependencies.AdminPassword)),
+		deskPool:       dependencies.DeskPool,
+		adminUsername:  dependencies.AdminUsername,
 	}
 	for _, origin := range dependencies.AllowedOrigins {
 		h.allowedOrigins[origin] = struct{}{}
@@ -86,6 +92,7 @@ func NewRouter(dependencies Dependencies) http.Handler {
 	mux.Handle("GET /api/v1/admin/requests/{id}", h.requireAdmin(http.HandlerFunc(h.getRequest)))
 	mux.Handle("PATCH /api/v1/admin/requests/{id}", h.requireAdmin(http.HandlerFunc(h.updateRequest)))
 	mux.Handle("DELETE /api/v1/admin/requests/{id}", h.requireAdmin(http.HandlerFunc(h.deleteRequest)))
+	h.registerDeskRoutes(mux)
 
 	return h.cors(mux)
 }
@@ -279,7 +286,7 @@ func (h *handler) cors(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Idempotency-Key")
 		}
 		if request.Method == http.MethodOptions {
 			if !allowed {

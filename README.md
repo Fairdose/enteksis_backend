@@ -1,6 +1,6 @@
 # Ent Challange Backend
 
-Ent Challange hizmet talep formu için Go HTTP API'si ve PostgreSQL veritabanı.
+Enteksis Benim Masam V0.1 ve hizmet talep formu için Go HTTP API'si ve PostgreSQL veritabanı.
 
 ## Gereksinimler
 
@@ -22,15 +22,14 @@ cp .env.example .env
 Windows'ta Git Bash veya WSL terminalinden `bash ./run.sh` kullanın. Aynı `run.sh` dosyası
 client deposunda da bulunur ve aynı Compose projesini yönetir.
 
-`migrations/001_create_service_requests.sql` PostgreSQL imajına alınır ve idempotent migration
-servisi tarafından her başlangıçta uygulanır. Bu yaklaşım Docker Desktop'ın harici disk bind mount
-kısıtlarından etkilenmez. Veriler `postgres-data` adlı Docker volume'ünde kalıcı olarak saklanır.
+`migrations/001` ve `002` eski hizmet talebi şemasını korur. `003`–`007`, ikinci fazın kanonik v2.1.1–v2.1.5 geçişleridir; kaynak paketle SHA-256 eşleşir. `008`, hesap oturumları için uygulamaya ait ek tablodur. Geçişler `schema_migrations` kaydıyla yalnız bir kez ve her dosya atomik olarak uygulanır. Veriler `postgres-data` volume'ünde kalır.
 
 - Client: `http://localhost:5173`
 - API: `http://localhost:8080`
 - PostgreSQL bağlantısını da sınayan sağlık kontrolü: `GET http://localhost:8080/health`
 - PostgreSQL: `localhost:5432`
 - Admin arayüzü: `http://localhost:5173/admin`
+- Benim Masam: `http://localhost:5173/admin/masa`
 
 Kontrol etmek için:
 
@@ -91,6 +90,17 @@ Kayıt ancak PostgreSQL insert işlemi başarıyla tamamlanırsa `201 Created` d
 Admin endpoint'leri HTTP Basic kimlik doğrulaması gerektirir. Kimlik bilgileri yalnız environment
 üzerinden sağlanır; production trafiği HTTPS üzerinden sunulur.
 
+### Benim Masam V0.1
+
+- `POST /api/v1/auth/login`, `/auth/refresh`, `/auth/logout`: ekip hesapları ve yenilenen oturumlar.
+- `GET /api/v1/desk/context`, `/my-dashboard`, `/tasks/{id}`: çalışma alanı, sekiz masa grubu ve ayrıntı.
+- `POST /api/v1/actors`, `/projects`, `/tasks`: yönetici tarafından ekip, proje ve görev oluşturma.
+- `POST /api/v1/tasks/{id}/ready`, `/start`, `/submit`, `/cancel`, `/blockers`, `/blockers/{blocker_id}/resolve`, `/reassign`; `POST /api/v1/submissions/{id}/review`: ayrı ve yetkilendirilmiş durum geçişleri.
+- `POST /api/v1/tasks/{id}/assignments`, `/assignments/{assignment_id}/end`, `/checklist`; `PATCH /api/v1/tasks/{id}/checklist/{item_id}`: katılım ve kontrol listesi.
+- `POST /api/v1/permission-grants`, `GET /api/v1/permission-grants`, `POST /api/v1/permission-grants/{id}/revoke`: süreli ve geri alınabilir görev yetkileri.
+
+Görev mutasyonları `Idempotency-Key` başlığı ister. İstemci işlem anahtarını her yeni eylem için üretir; tekrar gönderimde aynı yanıt döner. Yeniden atama gövdesindeki `expected_primary_assignment_id` güncel değilse `409 stale_assignment` ve `current_assignment_id` döner. Görev ve üyelikler fiziksel silinmez; olaylar `audit_events` ve `outbox_events` kayıtlarına aynı transaction içinde yazılır. Benim Masam yetkisi aktif rol ve atamalardan sunucuda hesaplanır. Çalışma alanı günü `Europe/Istanbul` sınırlarıyla değerlendirilir.
+
 ## Test
 
 Yerel Go kurulumu ile:
@@ -109,11 +119,8 @@ API image build aşaması `go test ./...` çalıştırır ve testler başarısı
 
 ## Bilinen eksikler
 
-- Admin kimlik doğrulaması environment üzerinden sağlanan statik bilgiler ve HTTP Basic kullanır;
-  kullanıcı yönetimi, parola sıfırlama, rol bazlı yetkilendirme ve sunucu taraflı oturum sistemi
-  yoktur. Challenge kapsamını ve bütçelenemeyen operasyon yükünü büyütmemek için eklenmedi. Üretim
-  kapsamı genişletilseydi kullanıcı tablosu, hash'lenmiş parolalar, güvenli session, SMTP tabanlı
-  parola sıfırlama, reCAPTCHA ve 2FA birlikte ele alınırdı.
+- Eski talep yönetimi HTTP Basic kullanır. Benim Masam için veritabanı oturumu ve PBKDF2 parola özeti vardır; self servis parola sıfırlama ve ikinci faktör bu sürümde yoktur.
+- Kanonik sözleşmedeki takım yönetimi, genel proje/görev düzenleme, rol bağlama ve yorum/ek dosya uçları henüz ürün arayüzüne açılmamıştır. V0.1 gösterimi görevden teslim kararına uzanan dikey akışa odaklanır.
 - Public form production Nginx üzerinde IP bazlı rate limiting ile korunur; yerel Compose ortamında
   bu reverse proxy katmanı bulunmaz.
 - Production Nginx admin API denemelerine daha sıkı, IP bazlı ayrı bir rate limit uygular.

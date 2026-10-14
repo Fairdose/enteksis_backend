@@ -1,4 +1,5 @@
 FROM postgres:18-alpine
 
-COPY migrations/ /docker-entrypoint-initdb.d/
 COPY migrations/ /migrations/
+COPY migrate.sh /usr/local/bin/enteksis-migrate
+RUN chmod +x /usr/local/bin/enteksis-migrate

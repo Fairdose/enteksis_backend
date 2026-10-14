@@ -50,6 +50,10 @@ func main() {
 		os.Exit(1)
 	}
 	requestStore := postgres.NewRequestStore(pool)
+	if err := httpapi.BootstrapDesk(startupContext, pool, cfg.AdminUsername, cfg.AdminPassword); err != nil {
+		logger.Error("workspace could not be initialized", "error", err)
+		os.Exit(1)
+	}
 
 	server := &http.Server{
 		Addr: cfg.HTTPAddr,
@@ -61,6 +65,7 @@ func main() {
 			AllowedOrigins: cfg.AllowedOrigins,
 			AdminUsername:  cfg.AdminUsername,
 			AdminPassword:  cfg.AdminPassword,
+			DeskPool:       pool,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
