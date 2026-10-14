@@ -1,6 +1,6 @@
-# Ent Challange Backend
+# ent-challange Backend
 
-Enteksis Benim Masam V0.1 ve hizmet talep formu için Go HTTP API'si ve PostgreSQL veritabanı.
+ent-challange Benim Masam V0.1 ve hizmet talep formu için Go HTTP API'si ve PostgreSQL veritabanı.
 
 ## Gereksinimler
 

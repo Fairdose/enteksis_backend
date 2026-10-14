@@ -1,5 +1,9 @@
 # AI_LOG
 
+## Marka açıklaması düzeltmesi (14 Ekim 2026)
+
+- Kullanıcı isteğiyle README'deki ürün markası `ent-challange` olarak netleştirildi. API davranışı, veritabanı şeması ve kanonik PDF değişmedi.
+
 ## İkinci faz — 14 Ekim 2026
 
 ### Kullanılan araçlar ve kaynaklar
