@@ -29,7 +29,7 @@ func BootstrapDesk(ctx context.Context, pool *pgxpool.Pool, username, password s
 		return err
 	}
 	var workspaceID, actorID, accountID string
-	if err = tx.QueryRow(ctx, `INSERT INTO workspaces(name,slug) VALUES ('Enteksis','ent-challange') ON CONFLICT(slug) DO UPDATE SET name=EXCLUDED.name RETURNING id`).Scan(&workspaceID); err != nil {
+	if err = tx.QueryRow(ctx, `INSERT INTO workspaces(name,slug) VALUES ('ent-challange','ent-challange') ON CONFLICT(slug) DO UPDATE SET name=EXCLUDED.name RETURNING id`).Scan(&workspaceID); err != nil {
 		return err
 	}
 	err = tx.QueryRow(ctx, `SELECT id,actor_id FROM accounts WHERE workspace_id=$1 AND email=$2 AND status='active'`, workspaceID, username).Scan(&accountID, &actorID)

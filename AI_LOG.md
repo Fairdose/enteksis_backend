@@ -3,6 +3,7 @@
 ## Marka açıklaması düzeltmesi (14 Ekim 2026)
 
 - Kullanıcı isteğiyle README'deki ürün markası `ent-challange` olarak netleştirildi. API davranışı, veritabanı şeması ve kanonik PDF değişmedi.
+- Masa başlangıç verisindeki çalışma alanı adı ve HTTP Basic realm de aynı markaya getirildi. Başlangıç işlemi mevcut slug kaydının adını günceller; şema değişikliği yoktur.
 
 ## İkinci faz — 14 Ekim 2026
 
